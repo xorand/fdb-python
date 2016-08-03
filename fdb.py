@@ -49,9 +49,9 @@ def fetch_fdb(ip, community):
     transport = cmdgen.UdpTransportTarget((ip, 161))
 
     real_fun = getattr(generator, 'nextCmd')
-    res = (errorIndication, errorStatus, errorIndex, varBindTable) = real_fun(comm_data, transport, value)
+    (errorIndication, errorStatus, errorIndex, varBindTable) = real_fun(comm_data, transport, value)
     if errorIndication is not None or errorStatus is True:
-        print "Error: %s %s %s %s" % res
+        print "IP: %s Error: %s %s %s %s" % (ip, errorIndication, errorStatus, errorIndex, varBindTable)
     else:
         for varBindTableRow in varBindTable:
             # varBindTableRow:
