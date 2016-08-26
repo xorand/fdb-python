@@ -1,4 +1,5 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
+
 from argparse import ArgumentParser
 from pysnmp.entity.rfc3413.oneliner import cmdgen
 import paramiko
@@ -51,7 +52,7 @@ def fetch_fdb(ip, community):
     real_fun = getattr(generator, 'nextCmd')
     (errorIndication, errorStatus, errorIndex, varBindTable) = real_fun(comm_data, transport, value)
     if errorIndication is not None or errorStatus is True:
-        print "IP: %s Error: %s %s %s %s" % (ip, errorIndication, errorStatus, errorIndex, varBindTable)
+        print("IP: %s Error: %s %s %s %s" % (ip, errorIndication, errorStatus, errorIndex, varBindTable))
     else:
         for varBindTableRow in varBindTable:
             # varBindTableRow:
@@ -72,20 +73,20 @@ def search_fdb(rt, switches):
     stdin, stdout, stderr = client.exec_command('ping count=1 '+args.ip)
     stdout.read()
     stdin, stdout, stderr = client.exec_command(':put [/ip arp get value-name=mac-address [find where address={}]]'.format(args.ip))
-    mac = stdout.read()[:17]
+    mac = stdout.read()[:17].decode('UTF-8')
     client.close()
     try:
         if mac[2] != ':':
             return
     except:
         return
-    print mac
+    print(mac)
     for (sw, trunks) in switches:
         fdb = fetch_fdb(sw, 'public')
         for fdb_rec in fdb:
             if fdb_rec['mac'].upper() == mac.upper():
                 if fdb_rec['port'] not in trunks or args.all:
-                    print 'sw: {} port: {}'.format(sw, fdb_rec['port'])
+                    print('sw: {} port: {}'.format(sw, fdb_rec['port']))
 
 # main program
 parser = ArgumentParser(description='script for switches base fdb search')
