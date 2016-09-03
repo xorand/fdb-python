@@ -296,9 +296,11 @@ log_file = open(log_file_name, 'w+')
 
 db = MySQLdb.connect(host='localhost', user='root', passwd='ujhbkrj7', db='racktables_db', charset='utf8')
 if args.oid == 0:
-    sql = 'select AttributeValue.string_value,Object.id,Object.name from AttributeValue left join Object on Object.id=AttributeValue.object_id where attr_id=3'
+    sql = 'select AttributeValue.string_value,Object.id,Object.name from AttributeValue \
+    left join Object on Object.id=AttributeValue.object_id where attr_id=3 and name not like "ipc%"'
 else:
-    sql = 'select AttributeValue.string_value,Object.id,Object.name from AttributeValue left join Object on Object.id=AttributeValue.object_id where attr_id=3 and Object.id={}'.format(args.oid)
+    sql = 'select AttributeValue.string_value,Object.id,Object.name from AttributeValue \
+    left join Object on Object.id=AttributeValue.object_id where attr_id=3 and Object.id={}'.format(args.oid)
 cursor = db.cursor()
 cursor.execute(sql)
 
@@ -311,7 +313,8 @@ g_diff = ''
 
 for rec in data:
     obj_ip, obj_id, obj_name = rec
-    sql = 'select AM.attr_id, D.dict_value, O.id as object_id from Object as O left join AttributeMap as AM on O.objtype_id = AM.objtype_id \
+    sql = 'select AM.attr_id, D.dict_value, O.id as object_id from Object as O \
+    left join AttributeMap as AM on O.objtype_id = AM.objtype_id \
     left join AttributeValue as AV on AV.attr_id = AM.attr_id and AV.object_id = O.id \
     left join Dictionary as D on D.dict_key = AV.uint_value and AM.chapter_id = D.chapter_id \
     where AM.attr_id=2 and object_id=' + str(obj_id)
