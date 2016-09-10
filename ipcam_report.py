@@ -22,13 +22,14 @@ else:
 for rec in data:
     obj_ip, obj_id, obj_name = rec
     sql = 'select AM.attr_id, D.dict_value, O.id as object_id from Object as O \
-    left join AttributeMap as AM on O.objtype_id = AM.objtype_id \
-    left join AttributeValue as AV on AV.attr_id = AM.attr_id and AV.object_id = O.id \
-    left join Dictionary as D on D.dict_key = AV.uint_value and AM.chapter_id = D.chapter_id \
-    where AM.attr_id=2 and object_id = '+str(obj_id)
+        left join AttributeMap as AM on O.objtype_id = AM.objtype_id \
+        left join AttributeValue as AV on AV.attr_id = AM.attr_id and AV.object_id = O.id \
+        left join Dictionary as D on D.dict_key = AV.uint_value and AM.chapter_id = D.chapter_id \
+        where AM.attr_id=2 and object_id = '+str(obj_id)
     cur = db.cursor()
     cur.execute(sql)
     dt = cur.fetchall()
+    obj_attr_id = obj_hw = obj_id = ''
     for rc in dt:
         obj_attr_id, obj_hw, obj_id = rc
     obj_hw = obj_hw.replace('%GPASS%', ' ')
@@ -36,22 +37,29 @@ for rec in data:
     cur = db.cursor()
     cur.execute(sql)
     dt = cur.fetchall()
+    obj_port_id = obj_mac = ''
     for rc in dt:
         obj_port_id, obj_mac = rc
-    sql = 'select Object.name, Port.name, AttributeValue.string_value from Link \
-        left join Port on porta=Port.id \
-        left join Object on Port.object_id=Object.id \
-        left join AttributeValue on Object.id=AttributeValue.object_id\
-        where AttributeValue.attr_id=3 and portb='+str(obj_port_id)
-    cur = db.cursor()
-    cur.execute(sql)
-    dt = cur.fetchall()
-    for rc in dt:
-        obj_up, obj_up_port, obj_up_ip = rc
-        if args.html:
-            print '<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>'.format(obj_name, obj_ip, obj_hw, EUI(obj_mac), obj_up, obj_up_ip, obj_up_port)
-        else:
-            print '{:11}{:15}{:32}{:18}{:15}{:16}{}'.format(obj_name, obj_ip, obj_hw, EUI(obj_mac), obj_up, obj_up_ip, obj_up_port)
+    obj_up = obj_up_port = obj_up_ip = ''
+    if obj_port_id != '':
+        sql = 'select Object.name, Port.name, AttributeValue.string_value from Link \
+            left join Port on porta=Port.id \
+            left join Object on Port.object_id=Object.id \
+            left join AttributeValue on Object.id=AttributeValue.object_id\
+            where AttributeValue.attr_id=3 and portb='+str(obj_port_id)
+        cur = db.cursor()
+        cur.execute(sql)
+        dt = cur.fetchall()
+        for rc in dt:
+            obj_up, obj_up_port, obj_up_ip = rc
+    try:
+        obj_mac = EUI(obj_mac)
+    except:
+        obj_mac = ''
+    if args.html:
+        print '<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>'.format(obj_name, obj_ip, obj_hw, obj_mac, obj_up, obj_up_ip, obj_up_port)
+    else:
+        print '{:11}{:15}{:32}{:18}{:15}{:16}{}'.format(obj_name, obj_ip, obj_hw, obj_mac, obj_up, obj_up_ip, obj_up_port)
 if args.html:
     print '</table>'
 db.close()

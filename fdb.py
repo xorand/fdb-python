@@ -3,6 +3,7 @@
 from argparse import ArgumentParser
 from pysnmp.entity.rfc3413.oneliner import cmdgen
 import paramiko
+import mysql.connector
 
 # (ip,(trunk_port1, ...))
 sw_n = (
@@ -64,21 +65,30 @@ def fetch_fdb(ip, community):
             yield {'vlan': vlan, 'mac': mac, 'port': port}
 
 
-def search_fdb(rt, switches):
+def ip2mac(ip, rt):
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     client.connect(hostname=rt, username=rt_login, password=rt_pass, port=rt_port, allow_agent=False, look_for_keys=False)
 
     # ping ip addres to populate arp table
-    stdin, stdout, stderr = client.exec_command('ping count=1 '+args.ip)
+    stdin, stdout, stderr = client.exec_command('ping count=1 '+ip)
     stdout.read()
-    stdin, stdout, stderr = client.exec_command(':put [/ip arp get value-name=mac-address [find where address={}]]'.format(args.ip))
+    stdin, stdout, stderr = client.exec_command(':put [/ip arp get value-name=mac-address \
+                                                [find where address={}]]'.format(ip))
     mac = stdout.read()[:17].decode('UTF-8')
     client.close()
     try:
         if mac[2] != ':':
-            return
+            return ''
+        else:
+            return mac
     except:
+        return ''
+
+
+def search_fdb_online(rt, switches):
+    mac = ip2mac(args.ip, rt)
+    if mac == '':
         return
     print(mac)
     for (sw, trunks) in switches:
@@ -88,12 +98,68 @@ def search_fdb(rt, switches):
                 if fdb_rec['port'] not in trunks or args.all:
                     print('sw: {} port: {}'.format(sw, fdb_rec['port']))
 
+
+def check_trunk(ip, port, switches):
+    trunk = False
+    for (sw, trunks) in switches:
+        if sw == ip and port in trunks:
+            trunk = True
+    return trunk
+
+
+def search_fdb_cache():
+    mac = ip2mac(args.ip, rt_n)
+    if mac == '':
+        mac = ip2mac(args.ip, rt_i)
+    if mac == '':
+        return
+    print(mac)
+    cursor = db.cursor()
+    cursor.execute("select INET_NTOA(ip),port from FDB where l2address=%s", (mac.replace(':', ''),))
+    for (ip, port) in cursor:
+        trunk = False
+        if not args.all:
+            trunk = check_trunk(ip, port, sw_n) or check_trunk(ip, port, sw_i)
+        if not trunk:
+            print('sw: {} port: {}'.format(ip, port))
+    cursor.close()
+
+
+def make_cache(switches):
+    for (sw, trunks) in switches:
+        print(sw)
+        fdb = fetch_fdb(sw, 'public')
+        for fdb_rec in fdb:
+            mac = fdb_rec['mac'].replace(':', '')
+            port = fdb_rec['port']
+            cursor = db.cursor()
+            cursor.execute('insert into FDB(ip,port,l2address) values (INET_ATON(%s),%s,%s)', (sw, str(port), mac))
+            db.commit()
+        print(' ... done')
+
 # main program
 parser = ArgumentParser(description='script for switches base fdb search')
 parser.add_argument('--all', action='store_true', help='search all ports (by defaults ignore trunks)')
-parser.add_argument('--ip', action='store', default='', help='ip for search', required=True)
-
+parser.add_argument('--ip', action='store', default='', help='ip for search')
+parser.add_argument('--mode', action='store', default='search-online',
+                    choices=['search-online', 'search-cache', 'make-cache'], help='script run mode')
 args = parser.parse_args()
 
-search_fdb(rt_n, sw_n)
-search_fdb(rt_i, sw_i)
+if args.mode == 'search-online':
+    search_fdb_online(rt_n, sw_n)
+    search_fdb_online(rt_i, sw_i)
+else:
+    db = mysql.connector.connect(user='root', password='ujhbkrj7', host='127.0.0.1', database='racktables_db')
+
+if args.mode == 'make-cache':
+    cursor = db.cursor()
+    cursor.execute('delete from FDB')
+    db.commit()
+    make_cache(sw_n)
+    make_cache(sw_i)
+    db.close()
+    print('all done')
+
+if args.mode == 'search-cache':
+    search_fdb_cache()
+    db.close()
