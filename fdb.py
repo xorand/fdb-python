@@ -53,7 +53,7 @@ def fetch_fdb(ip, community):
     real_fun = getattr(generator, 'nextCmd')
     (errorIndication, errorStatus, errorIndex, varBindTable) = real_fun(comm_data, transport, value)
     if errorIndication is not None or errorStatus is True:
-        print("IP: %s Error: %s %s %s %s" % (ip, errorIndication, errorStatus, errorIndex, varBindTable))
+        print('IP: %s Error: %s %s %s %s' % (ip, errorIndication, errorStatus, errorIndex, varBindTable))
     else:
         for varBindTableRow in varBindTable:
             # varBindTableRow:
@@ -107,6 +107,16 @@ def check_trunk(ip, port, switches):
     return trunk
 
 
+def ip2name(ip):
+    cursor = db.cursor(buffered=True)
+    cursor.execute('select Object.name from AttributeValue left join Object on Object.id=AttributeValue.object_id \
+                   where attr_id=3 and AttributeValue.string_value=%s', (ip,))
+    name = ''
+    for (value,) in cursor:
+        name = value
+    return name
+
+
 def search_fdb_cache():
     mac = ip2mac(args.ip, rt_n)
     if mac == '':
@@ -114,14 +124,17 @@ def search_fdb_cache():
     if mac == '':
         return
     print(mac)
-    cursor = db.cursor()
-    cursor.execute("select INET_NTOA(ip),port from FDB where l2address=%s", (mac.replace(':', ''),))
+    cursor = db.cursor(buffered=True)
+    cursor.execute('select INET_NTOA(ip),port from FDB where l2address=%s', (mac.replace(':', ''),))
     for (ip, port) in cursor:
         trunk = False
         if not args.all:
             trunk = check_trunk(ip, port, sw_n) or check_trunk(ip, port, sw_i)
         if not trunk:
-            print('sw: {} port: {}'.format(ip, port))
+            if args.name:
+                print('sw: {} ({}) port: {}'.format(ip, ip2name(ip), port))
+            else:
+                print('sw: {} port: {}'.format(ip, port))
     cursor.close()
 
 
@@ -140,6 +153,7 @@ def make_cache(switches):
 # main program
 parser = ArgumentParser(description='script for switches base fdb search')
 parser.add_argument('--all', action='store_true', help='search all ports (by defaults ignore trunks)')
+parser.add_argument('--name', action='store_true', help='print name of sw from racktables (work in search-cache mode only)')
 parser.add_argument('--ip', action='store', default='', help='ip for search')
 parser.add_argument('--mode', action='store', default='search-online',
                     choices=['search-online', 'search-cache', 'make-cache'], help='script run mode')
