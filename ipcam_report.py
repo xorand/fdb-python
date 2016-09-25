@@ -11,7 +11,7 @@ args = parser.parse_args()
 
 db = MySQLdb.connect(host='localhost', user='root', passwd='ujhbkrj7', db='racktables_db', charset='utf8')
 sql = 'select AttributeValue.string_value,Object.id,Object.name from AttributeValue \
-left join Object on Object.id=AttributeValue.object_id where attr_id=3 and name like "%{}%"'.format(args.query)
+left join Object on Object.id=AttributeValue.object_id where attr_id=3 and name like "%{}%" order by name'.format(args.query)
 cursor = db.cursor()
 cursor.execute(sql)
 data = cursor.fetchall()
