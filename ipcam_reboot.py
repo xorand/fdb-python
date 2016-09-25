@@ -1,7 +1,7 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
+
 from argparse import ArgumentParser
-import httplib
-import base64
+import httplib2
 
 # main program
 parser = ArgumentParser(description='script for reboot ip camera by ip')
@@ -11,12 +11,12 @@ parser.add_argument('--model', action='store', default='evidence', choices=['evi
 args = parser.parse_args()
 if args.model == 'evidence':
     url = '/cgi-bin/admin/restart.cgi'
-    client = httplib.HTTPConnection(args.ip)
-    headers = dict()
-    headers["Authorization"] = "Basic " + base64.encodestring('%s:%s' % ('Admin', '1234'))[:-1]
-    client.request('GET', url, None, headers)
-    response = client.getresponse()
-    if response.status != 200:
-        print args.ip+' reboot failed (status '+str(response.status)+')'
+    login = 'Admin'
+    password = '1234'
+    client = httplib2.Http()
+    client.add_credentials(login, password)
+    resp, content = client.request('http://' + args.ip + url, 'GET', headers={'content-type': 'text/plain'})
+    if resp.status != 200:
+        print(args.ip+' reboot failed (status '+str(resp.status)+')')
     else:
-        print args.ip+' rebooted'
+        print(args.ip+' rebooted')
