@@ -1,5 +1,5 @@
-#!/usr/bin/python
-import MySQLdb
+#!/usr/bin/env python3
+import mysql.connector
 from netaddr import EUI
 from argparse import ArgumentParser
 
@@ -9,16 +9,16 @@ parser.add_argument('--query', type=str, default='ipc', help='query string')
 parser.add_argument('--html', action='store_true', help='view report in html (default text)')
 args = parser.parse_args()
 
-db = MySQLdb.connect(host='localhost', user='root', passwd='ujhbkrj7', db='racktables_db', charset='utf8')
+db = mysql.connector.connect(host='localhost', user='root', passwd='ujhbkrj7', db='racktables_db', charset='utf8')
 sql = 'select AttributeValue.string_value,Object.id,Object.name from AttributeValue \
 left join Object on Object.id=AttributeValue.object_id where attr_id=3 and name like "%{}%" order by name'.format(args.query)
 cursor = db.cursor()
 cursor.execute(sql)
 data = cursor.fetchall()
 if args.html:
-    print '<table border=1><th>{}</th><th>{}</th><th>{}</th><th>{}</th><th>{}</th><th>{}</th><th>{}</th>'.format('name', 'ip', 'model', 'mac', 'uplink', 'uip', 'port')
+    print('<table border=1><th>{}</th><th>{}</th><th>{}</th><th>{}</th><th>{}</th><th>{}</th><th>{}</th>'.format('name', 'ip', 'model', 'mac', 'uplink', 'uip', 'port'))
 else:
-    print '{:11}{:15}{:32}{:18}{:15}{:16}{}'.format('name', 'ip', 'model', 'mac', 'uplink', 'uip', 'port')
+    print('{:11}{:15}{:32}{:18}{:15}{:16}{}'.format('name', 'ip', 'model', 'mac', 'uplink', 'uip', 'port'))
 for rec in data:
     obj_ip, obj_id, obj_name = rec
     sql = 'select AM.attr_id, D.dict_value, O.id as object_id from Object as O \
@@ -53,13 +53,13 @@ for rec in data:
         for rc in dt:
             obj_up, obj_up_port, obj_up_ip = rc
     try:
-        obj_mac = EUI(obj_mac)
+        obj_mac = str(EUI(obj_mac))
     except:
         obj_mac = ''
     if args.html:
-        print '<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>'.format(obj_name, obj_ip, obj_hw, obj_mac, obj_up, obj_up_ip, obj_up_port)
+        print('<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>'.format(obj_name, obj_ip, obj_hw, obj_mac, obj_up, obj_up_ip, obj_up_port))
     else:
-        print '{:11}{:15}{:32}{:18}{:15}{:16}{}'.format(obj_name, obj_ip, obj_hw, obj_mac, obj_up, obj_up_ip, obj_up_port)
+        print('{:11}{:15}{:32}{:18}{:15}{:16}{}'.format(obj_name, obj_ip, obj_hw, obj_mac, obj_up, obj_up_ip, obj_up_port))
 if args.html:
-    print '</table>'
+    print('</table>')
 db.close()
