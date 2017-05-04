@@ -202,39 +202,55 @@ def backup_dlink_sw(obj_name, obj_ip, obj_id, obj_mod, obj_login, obj_pass):
         log_msg(' ... getting config from device D-Link '+obj_mod)
         fname = obj_name + '.' + obj_mod.lower() + '.txt'
         client = telnetlib.Telnet(obj_ip)
-        client.read_until(b':', cfg_pause)
-        client.write((obj_login + '\n').encode('utf-8'))
-        client.read_until(b':', cfg_pause)
-        client.write((obj_pass+'\n').encode('utf-8'))
-        client.read_until(b'#', cfg_pause)
-        client.write(b'\n')
-        client.read_until(b'#', cfg_pause)
-        if (obj_mod == 'DGS-3100-24TG') or (obj_mod == 'DGS-3100-48'):
-            upload_cmd = 'upload configuration ' + cfg_tftp + ' ' + fname + '\n'
-            client.write(upload_cmd.encode('utf-8'))
-            client.read_until(b'!', cfg_pause)
-            time.sleep(1)
-        elif (obj_mod == 'DES-3026'):
-            upload_cmd = 'upload configuration ' + cfg_tftp + ' ' + fname + '\n'
-            client.write(upload_cmd.encode('utf-8'))
+        if (obj_mod == 'DGS-1510-28X'):
+            client.read_until(b':', cfg_pause)
+            client.write((obj_login+'\n').encode('utf-8'))
+            client.read_until(b':', cfg_pause)
+            client.write((obj_pass+'\n').encode('utf-8'))
             client.read_until(b'#', cfg_pause)
-            time.sleep(1)
-        elif (obj_mod == 'DGS-3120-24SC'):
-            upload_cmd = 'upload cfg_toTFTP ' + cfg_tftp + ' dest_file ' + fname + '\n'
-            client.write(upload_cmd.encode('utf-8'))
-            client.read_until(b'Success.', cfg_pause)
+            client.write(('copy startup-config tftp: //'+cfg_tftp+'/'+fname+'\n').encode('utf-8'))
+            client.read_until(b'?', cfg_pause)
+            client.write(b'\n')
+            client.read_until(b'?', cfg_pause)
+            client.write(b'\n')
+            client.read_until(b'#')
+            client.write(b'logout\n')
+            client.close()
             time.sleep(1)
         else:
-            upload_cmd = 'upload cfg_toTFTP ' + cfg_tftp + ' ' + fname + '\n'
-            client.write(upload_cmd.encode('utf-8'))
+            client.read_until(b':', cfg_pause)
+            client.write((obj_login + '\n').encode('utf-8'))
+            client.read_until(b':', cfg_pause)
+            client.write((obj_pass+'\n').encode('utf-8'))
             client.read_until(b'#', cfg_pause)
-            cfg_done = os.path.isfile(cfg_tftp_path + fname)
-            if not cfg_done:
-                upload_cmd = 'upload cfg_toTFTP ' + cfg_tftp + ' dest_file ' + fname + '\n'
+            client.write(b'\n')
+            client.read_until(b'#', cfg_pause)
+            if (obj_mod == 'DGS-3100-24TG') or (obj_mod == 'DGS-3100-48'):
+                upload_cmd = 'upload configuration ' + cfg_tftp + ' ' + fname + '\n'
+                client.write(upload_cmd.encode('utf-8'))
+                client.read_until(b'!', cfg_pause)
+                time.sleep(1)
+            elif (obj_mod == 'DES-3026'):
+                upload_cmd = 'upload configuration ' + cfg_tftp + ' ' + fname + '\n'
                 client.write(upload_cmd.encode('utf-8'))
                 client.read_until(b'#', cfg_pause)
-        client.write(b'logout\n')
-        client.close()
+                time.sleep(1)
+            elif (obj_mod == 'DGS-3120-24SC'):
+                upload_cmd = 'upload cfg_toTFTP ' + cfg_tftp + ' dest_file ' + fname + '\n'
+                client.write(upload_cmd.encode('utf-8'))
+                client.read_until(b'Success.', cfg_pause)
+                time.sleep(1)
+            else:
+                upload_cmd = 'upload cfg_toTFTP ' + cfg_tftp + ' ' + fname + '\n'
+                client.write(upload_cmd.encode('utf-8'))
+                client.read_until(b'#', cfg_pause)
+                cfg_done = os.path.isfile(cfg_tftp_path + fname)
+                if not cfg_done:
+                    upload_cmd = 'upload cfg_toTFTP ' + cfg_tftp + ' dest_file ' + fname + '\n'
+                    client.write(upload_cmd.encode('utf-8'))
+                    client.read_until(b'#', cfg_pause)
+            client.write(b'logout\n')
+            client.close()
         return save_tftp_config(fname, obj_id)
     except:
         return ST_ER
