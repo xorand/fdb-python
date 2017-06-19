@@ -358,7 +358,8 @@ rack_secret.close()
 db = mysql.connector.connect(host=rack_host, user=rack_user, passwd=rack_pass, db=rack_db, charset='utf8')
 if args.oid == 0:
     sql = 'select AttributeValue.string_value,Object.id,Object.name from AttributeValue \
-    left join Object on Object.id=AttributeValue.object_id where attr_id=3 and name not like "ipc%" and name not like "ph%"'
+    left join Object on Object.id=AttributeValue.object_id where attr_id=3 and Object.id in \
+    (select Object.id from AttributeValue left join Object on Object.id=AttributeValue.object_id where attr_id=10004 and uint_value=1501)'
 else:
     sql = 'select AttributeValue.string_value,Object.id,Object.name from AttributeValue \
     left join Object on Object.id=AttributeValue.object_id where attr_id=3 and Object.id={}'.format(args.oid)
