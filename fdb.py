@@ -4,53 +4,7 @@ from argparse import ArgumentParser
 from pysnmp.entity.rfc3413.oneliner import cmdgen
 import paramiko
 import mysql.connector
-
-# (ip,(trunk_port1, ...))
-sw_n = (
-    ('192.168.100.100', (2, 9, 10, 11, 12, 13, 14, 15)),
-    ('192.168.100.101', (26,)),
-    ('192.168.100.102', (26,)),
-    ('192.168.100.103', (26,)),
-    ('192.168.100.104', (26,)),
-    ('192.168.100.105', (48,)),
-    ('192.168.100.106', (3, 5, 9, 10, 11, 12, 13, 14)),
-    ('192.168.100.107', (25,)),
-    ('192.168.100.108', (25,)),
-    ('192.168.100.109', (25,)),
-    ('192.168.100.110', (25,)),
-    ('192.168.100.111', (25,)),
-    ('192.168.100.112', (25,)),
-    ('192.168.100.113', (28,)),
-    ('192.168.100.114', (26,)),
-    ('192.168.100.115', (26,)),
-    ('192.168.100.116', (52,)),
-    ('192.168.33.252', (28,))
-)
-
-sw_i = (
-    ('192.168.101.101', (25,)),
-    ('192.168.101.102', (25,)),
-    ('192.168.101.103', (50,)),
-    ('192.168.101.104', (25,)),
-    ('192.168.101.105', (25,)),
-    ('192.168.101.106', (25,)),
-    ('192.168.101.107', (24,)),
-    ('192.168.101.108', (25,)),
-    ('192.168.101.109', (26,)),
-    ('192.168.101.110', (26,)),
-    ('192.168.101.112', (26,)),
-    ('192.168.101.113', (28,)),
-    ('192.168.101.114', (28,)),
-    ('192.168.101.115', (25,)),
-    ('192.168.101.116', (26,)),
-    ('192.168.101.111', (1, 2, 3, 4, 6, 8, 9, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20))
-)
-
-rt_n = '192.168.1.200'
-rt_i = '192.168.3.200'
-rt_login = 'admin'
-rt_pass = 'vtufgfccdjhl'
-rt_port = 7772
+from fdb_cfg import *
 
 
 def fetch_fdb(ip, community):
@@ -94,6 +48,23 @@ def ip2mac(ip, rt):
             return mac
     except:
         return ''
+
+
+def mac2ip(mac, rt):
+    client = paramiko.SSHClient()
+    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    client.connect(hostname=rt, username=rt_login, password=rt_pass, port=rt_port, allow_agent=False, look_for_keys=False)
+
+    stdin, stdout, stderr = client.exec_command('/ip arp print detail where mac-address={}'.format(mac.upper()))
+    output = stdout.read().decode('UTF-8')
+    ip_s = output.find('address=')
+    ip_e = output.find('mac-address=')
+    if ip_s > 0:
+        ip = output[ip_s + 8:ip_e - 1]
+    else:
+        ip = ''
+    client.close()
+    return ip
 
 
 def search_fdb_online(rt, switches):
@@ -165,13 +136,26 @@ parser = ArgumentParser(description='script for switches base fdb search')
 parser.add_argument('--all', action='store_true', help='search all ports (by defaults ignore trunks)')
 parser.add_argument('--name', action='store_true', help='print name of sw from racktables (work in search-cache mode only)')
 parser.add_argument('--ip', action='store', default='', help='ip for search')
+parser.add_argument('--mac', action='store', default='', help='mac for search')
 parser.add_argument('--mode', action='store', default='search-online',
-                    choices=['search-online', 'search-cache', 'make-cache'], help='script run mode')
+                    choices=['mac2ip', 'search-online', 'search-cache', 'make-cache'], help='script run mode')
 args = parser.parse_args()
 
+if args.mode == 'mac2ip':
+    args.ip = mac2ip(args.mac, rt_n)
+    if args.ip == '':
+        args.ip = mac2ip(args.mac, rt_i)
+    print('{} {}'.format(args.ip, args.mac))
+
 if args.mode == 'search-online':
-    search_fdb_online(rt_n, sw_n)
-    search_fdb_online(rt_i, sw_i)
+    if args.mac != '':
+        args.ip = mac2ip(args.mac, rt_n)
+        if args.ip == '':
+            args.ip = mac2ip(args.mac, rt_i)
+    if args.ip != '':
+        print(args.ip)
+        search_fdb_online(rt_n, sw_n)
+        search_fdb_online(rt_i, sw_i)
 else:
     db = mysql.connector.connect(user='root', password='ujhbkrj7', host='127.0.0.1', database='racktables_db')
 

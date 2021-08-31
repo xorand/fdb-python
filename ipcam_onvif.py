@@ -58,6 +58,8 @@ if not ret:  # evidence
     (ret, dev_info, net_if, stream_uri, snapshot_uri) = get_onvif_info(args.ip, 'Admin', '1234')
 if not ret:  # hikvision
     (ret, dev_info, net_if, stream_uri, snapshot_uri) = get_onvif_info(args.ip, 'admin', '12345')
+if not ret:  # hi.watch
+    (ret, dev_info, net_if, stream_uri, snapshot_uri) = get_onvif_info(args.ip, 'admin', 'qwer1234')
 if not ret:  # infinity
     (ret, dev_info, net_if, stream_uri, snapshot_uri) = get_onvif_info(args.ip, 'admin', 'admin')
 if not ret:  # china, port 2000

@@ -200,7 +200,7 @@ def save_tftp_config(fname, obj_id):
 def backup_dlink_sw(obj_name, obj_ip, obj_id, obj_mod, obj_login, obj_pass):
     try:
         log_msg(' ... getting config from device D-Link '+obj_mod)
-        fname = obj_name + '.' + obj_mod.lower() + '.txt'
+        fname = obj_name + '.' + obj_mod.lower().replace('/', '') + '.txt'
         client = telnetlib.Telnet(obj_ip)
         if (obj_mod == 'DGS-1510-28X'):
             client.read_until(b':', cfg_pause)
@@ -266,10 +266,14 @@ def backup_dlink_wf(obj_name, obj_ip, obj_id, obj_mod, obj_login, obj_pass):
         client.read_until(b':', cfg_pause)
         client.write((obj_pass+'\n').encode('utf-8'))
         client.read_until(b'>', cfg_pause)
-        client.write(('tftp srvip ' + cfg_tftp + '\n').encode('utf-8'))
-        client.read_until(b'>')
-        client.write(('tftp uploadtxt ' + fname + '\n').encode('utf-8'))
-        client.read_until(b'>')
+        cmd = 'tftp srvip ' + cfg_tftp + '\n'
+        log_msg(' ... ' + cmd)
+        client.write(cmd.encode('utf-8'))
+        client.read_until(b'>', cfg_pause)
+        cmd = 'tftp uploadtxt ' + fname + '\n'
+        log_msg(' ... ' + cmd)
+        client.write(cmd.encode('utf-8'))
+        client.read_until(b'>', cfg_pause)
         client.write(b'quit\n')
         client.close()
         return save_tftp_config(fname, obj_id)
@@ -311,7 +315,7 @@ def backup_ubiquiti(obj_name, obj_ip, obj_id, obj_mod, obj_login, obj_pass):
         scp.close()
         transport.close()
         return save_tftp_config(fname, obj_id)
-    except IOError:
+    except:
         return ST_ER
 
 
@@ -385,7 +389,6 @@ for rec in data:
     data_hw = cursor_hw.fetchall()
     for rec_hw in data_hw:
         obj_attr_id, obj_hw, obj_id = rec_hw
-
     if obj_hw.find('[[') >= 0:
         obj_hw = obj_hw[2:obj_hw.find(' | ')]
     obj_man = obj_hw[:obj_hw.find('%GPASS%')]
